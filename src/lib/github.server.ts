@@ -67,7 +67,12 @@ export async function readFile(ref: RepoRef, path: string) {
   return { path, content: bytes.length > 120_000 ? bytes.slice(0, 120_000) : bytes };
 }
 
-export type Change = { path: string; content?: string; encoding?: "utf8" | "base64"; delete?: boolean };
+export type Change = {
+  path: string;
+  content?: string | undefined;
+  encoding?: "utf8" | "base64" | undefined;
+  delete?: boolean | undefined;
+};
 
 export async function commitChanges(ref: RepoRef, message: string, changes: Change[]) {
   const branch = await resolveBranch(ref);

@@ -8,7 +8,7 @@ export type Attachment = {
   mimeType: string;
   isImage: boolean;
   dataBase64: string;
-  text?: string;
+  text?: string | undefined;
 };
 
 export type ChatTurn = { role: "user" | "assistant"; content: string };
