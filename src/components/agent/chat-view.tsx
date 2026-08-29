@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ArrowUp,
   CheckCircle2,
@@ -10,6 +10,7 @@ import {
   LogOut,
   Moon,
   Paperclip,
+  Sparkles,
   Sun,
   Terminal,
   Trash2,
@@ -57,6 +58,165 @@ const SUGGESTIONS = [
   "Adicione um componente de rodapé responsivo",
   "Crie um README completo para este projeto",
 ];
+
+type MdBlock =
+  | { type: "code"; lang: string; content: string }
+  | { type: "heading"; level: number; text: string }
+  | { type: "list"; ordered: boolean; items: string[] }
+  | { type: "paragraph"; text: string };
+
+function parseMarkdown(source: string): MdBlock[] {
+  const blocks: MdBlock[] = [];
+  const lines = source.split("\n");
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i]!;
+    const fence = line.match(/^```(\w*)/);
+    if (fence) {
+      const lang = fence[1] ?? "";
+      const content: string[] = [];
+      i += 1;
+      while (i < lines.length && !/^```/.test(lines[i]!)) {
+        content.push(lines[i]!);
+        i += 1;
+      }
+      i += 1;
+      blocks.push({ type: "code", lang, content: content.join("\n") });
+      continue;
+    }
+    const heading = line.match(/^(#{1,4})\s+(.*)$/);
+    if (heading) {
+      blocks.push({ type: "heading", level: heading[1]!.length, text: heading[2]! });
+      i += 1;
+      continue;
+    }
+    const bullet = line.match(/^\s*[-*•]\s+(.*)$/);
+    const ordered = line.match(/^\s*\d+[.)]\s+(.*)$/);
+    if (bullet || ordered) {
+      const items: string[] = [];
+      const isOrdered = Boolean(ordered);
+      while (i < lines.length) {
+        const item =
+          lines[i]!.match(/^\s*[-*•]\s+(.*)$/) ?? lines[i]!.match(/^\s*\d+[.)]\s+(.*)$/);
+        if (!item) break;
+        items.push(item[1]!);
+        i += 1;
+      }
+      blocks.push({ type: "list", ordered: isOrdered, items });
+      continue;
+    }
+    if (line.trim() === "") {
+      i += 1;
+      continue;
+    }
+    const paragraph: string[] = [];
+    while (
+      i < lines.length &&
+      lines[i]!.trim() !== "" &&
+      !/^```/.test(lines[i]!) &&
+      !/^#{1,4}\s+/.test(lines[i]!) &&
+      !/^\s*[-*•]\s+/.test(lines[i]!) &&
+      !/^\s*\d+[.)]\s+/.test(lines[i]!)
+    ) {
+      paragraph.push(lines[i]!);
+      i += 1;
+    }
+    blocks.push({ type: "paragraph", text: paragraph.join("\n") });
+  }
+  return blocks;
+}
+
+function renderInline(text: string): ReactNode[] {
+  return text
+    .split(/(\*\*[^*]+\*\*|\*[^*\n]+\*|`[^`]+`)/g)
+    .filter(Boolean)
+    .map((part, index) => {
+      if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
+        return <strong key={index} className="font-semibold">{part.slice(2, -2)}</strong>;
+      }
+      if (part.startsWith("*") && part.endsWith("*") && part.length > 2) {
+        return <em key={index}>{part.slice(1, -1)}</em>;
+      }
+      if (part.startsWith("`") && part.endsWith("`") && part.length > 2) {
+        return (
+          <code
+            key={index}
+            className="rounded-md border border-border bg-muted px-1.5 py-0.5 font-mono text-[0.85em]"
+          >
+            {part.slice(1, -1)}
+          </code>
+        );
+      }
+      return <span key={index}>{part}</span>;
+    });
+}
+
+function MarkdownContent({ content }: { content: string }) {
+  const blocks = useMemo(() => parseMarkdown(content), [content]);
+
+  return (
+    <div className="space-y-3.5">
+      {blocks.map((block, index) => {
+        if (block.type === "code") {
+          return (
+            <div
+              key={index}
+              className="overflow-hidden rounded-xl border border-border bg-muted/60"
+            >
+              {block.lang ? (
+                <p className="border-b border-border bg-muted/70 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wide text-muted-foreground">
+                  {block.lang}
+                </p>
+              ) : null}
+              <pre className="overflow-x-auto p-3 font-mono text-[13px] leading-6">
+                <code>{block.content}</code>
+              </pre>
+            </div>
+          );
+        }
+        if (block.type === "heading") {
+          const sizeClass =
+            block.level <= 1
+              ? "text-lg sm:text-xl"
+              : block.level === 2
+                ? "text-base sm:text-lg"
+                : "text-[15px] sm:text-base";
+          return (
+            <p
+              key={index}
+              className={`font-display ${sizeClass} font-semibold tracking-tight text-foreground`}
+            >
+              {renderInline(block.text)}
+            </p>
+          );
+        }
+        if (block.type === "list") {
+          const ListTag = block.ordered ? "ol" : "ul";
+          return (
+            <ListTag
+              key={index}
+              className={`ml-5 space-y-1.5 text-[15px] leading-7 sm:text-base ${block.ordered ? "list-decimal" : "list-disc"} marker:text-primary`}
+            >
+              {block.items.map((item, itemIndex) => (
+                <li key={itemIndex} className="pl-1">
+                  {renderInline(item)}
+                </li>
+              ))}
+            </ListTag>
+          );
+        }
+        return (
+          <p
+            key={index}
+            className="whitespace-pre-wrap text-[15px] leading-7 text-foreground/95 sm:text-base"
+          >
+            {renderInline(block.text)}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
 
 export function ChatView({
   repo,
@@ -164,7 +324,7 @@ export function ChatView({
             >
               <Trash2 className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm" onClick={onDisconnect} className="gap-2">
+            <Button variant="destructive" size="sm" onClick={onDisconnect} className="gap-2">
               <LogOut className="h-4 w-4" />
               <span className="hidden sm:inline">Desconectar</span>
             </Button>
@@ -312,12 +472,12 @@ function MessageRow({ message }: { message: ChatMessage }) {
   return (
     <div className="space-y-3">
       {message.steps?.length ? (
-        <div className="space-y-1.5 rounded-2xl border border-border bg-muted/40 p-3">
+        <div className="space-y-2 rounded-2xl border border-border bg-muted/40 p-3.5">
           <p className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
             <Terminal className="h-3.5 w-3.5" /> Ações no repositório
           </p>
           {message.steps.map((step, index) => (
-            <p key={index} className="flex items-start gap-2 font-mono text-xs">
+            <p key={index} className="flex items-start gap-2 font-mono text-[13px] leading-6">
               {step.ok ? (
                 <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success" />
               ) : (
@@ -329,10 +489,22 @@ function MessageRow({ message }: { message: ChatMessage }) {
         </div>
       ) : null}
 
-      <div
-        className={`text-sm leading-relaxed whitespace-pre-wrap ${message.error ? "text-destructive" : "text-foreground"}`}
-      >
-        {message.content}
+      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-panel)]">
+        <div className="flex items-center gap-2 border-b border-border bg-muted/40 px-4 py-2.5">
+          <Sparkles className="h-3.5 w-3.5 text-primary" />
+          <span className="font-display text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            {message.error ? "Falha na solicitação" : "Resposta do agente"}
+          </span>
+        </div>
+        <div className="px-4 py-4 sm:px-5 sm:py-5">
+          {message.error ? (
+            <p className="whitespace-pre-wrap text-[15px] leading-7 text-destructive sm:text-base">
+              {message.content}
+            </p>
+          ) : (
+            <MarkdownContent content={message.content} />
+          )}
+        </div>
       </div>
 
       {message.commit ? (
@@ -340,9 +512,9 @@ function MessageRow({ message }: { message: ChatMessage }) {
           href={message.commit.url}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs transition-colors hover:border-primary"
+          className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3.5 py-2 text-[13px] transition-colors hover:border-primary"
         >
-          <GitCommitHorizontal className="h-3.5 w-3.5 text-primary" />
+          <GitCommitHorizontal className="h-4 w-4 text-primary" />
           <span className="font-mono">{message.commit.sha.slice(0, 7)}</span>
           <span className="text-muted-foreground">
             {message.commit.files.length} arquivo(s) enviados para {message.commit.branch}
