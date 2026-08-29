@@ -1,6 +1,6 @@
 const GH = "https://api.github.com";
 
-export type RepoRef = { owner: string; repo: string; branch?: string; token: string };
+export type RepoRef = { owner: string; repo: string; branch?: string | undefined; token: string };
 
 async function gh<T>(ref: RepoRef, path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${GH}${path}`, {
