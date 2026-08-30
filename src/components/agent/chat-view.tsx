@@ -23,13 +23,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
+export type AttachmentUsage = "reference" | "add";
+
 export type Attachment = {
   name: string;
   mimeType: string;
   isImage: boolean;
   dataBase64: string;
   text?: string;
+  usage: AttachmentUsage;
 };
+
 
 export type AgentStep = { tool: string; detail: string; ok: boolean };
 
@@ -39,7 +43,7 @@ export type ChatMessage = {
   content: string;
   steps?: AgentStep[];
   commit?: { sha: string; url: string; files: string[]; branch: string };
-  attachments?: { name: string; isImage: boolean }[];
+  attachments?: { name: string; isImage: boolean; usage?: AttachmentUsage }[];
   error?: boolean;
   streaming?: boolean;
 };
@@ -261,7 +265,7 @@ export function ChatView({
     return () => clearInterval(timer);
   }, [sending]);
 
-  async function addFiles(files: FileList | null) {
+  async function addFiles(files: ArrayLike<File> | null) {
     if (!files) return;
     const next: Attachment[] = [];
     for (const file of Array.from(files).slice(0, 6)) {
@@ -278,16 +282,37 @@ export function ChatView({
             file.name,
           ));
       next.push({
-        name: file.name,
+        name: file.name || `colado-${Date.now()}.${(file.type.split("/")[1] ?? "bin")}`,
         mimeType: file.type || "application/octet-stream",
         isImage,
         dataBase64,
+        usage: isImage ? "reference" : "add",
         ...(isText ? { text: new TextDecoder().decode(bytes) } : {}),
       });
     }
     setAttachments((prev) => [...prev, ...next].slice(0, 6));
     if (fileRef.current) fileRef.current.value = "";
   }
+
+  function handlePaste(event: React.ClipboardEvent) {
+    const items = Array.from(event.clipboardData?.items ?? []);
+    const files = items
+      .filter((item) => item.kind === "file")
+      .map((item) => item.getAsFile())
+      .filter((file): file is File => Boolean(file));
+    if (!files.length) return;
+    event.preventDefault();
+    void addFiles(files);
+  }
+
+  function toggleUsage(index: number) {
+    setAttachments((prev) =>
+      prev.map((a, i) =>
+        i === index ? { ...a, usage: a.usage === "reference" ? "add" : "reference" } : a,
+      ),
+    );
+  }
+
 
   function submit() {
     if (!text.trim() || sending) return;
@@ -404,6 +429,18 @@ export function ChatView({
                   <span className="max-w-[160px] truncate">{a.name}</span>
                   <button
                     type="button"
+                    onClick={() => toggleUsage(index)}
+                    title="Alternar entre usar como referência ou adicionar ao projeto"
+                    className={`rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors ${
+                      a.usage === "reference"
+                        ? "border-primary/40 bg-primary/10 text-primary"
+                        : "border-success/40 bg-success/10 text-success"
+                    }`}
+                  >
+                    {a.usage === "reference" ? "referência" : "adicionar ao projeto"}
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== index))}
                     aria-label={`Remover ${a.name}`}
                   >
@@ -414,7 +451,10 @@ export function ChatView({
             </div>
           ) : null}
 
-          <div className="flex items-end gap-2 rounded-3xl border border-border bg-card p-2 shadow-[var(--shadow-panel)] focus-within:border-primary">
+          <div
+            className="flex items-end gap-2 rounded-3xl border border-border bg-card p-2 shadow-[var(--shadow-panel)] focus-within:border-primary"
+            onPaste={handlePaste}
+          >
             <input
               ref={fileRef}
               type="file"
@@ -433,6 +473,7 @@ export function ChatView({
             <Textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
+              onPaste={handlePaste}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
@@ -440,7 +481,7 @@ export function ChatView({
                 }
               }}
               rows={1}
-              placeholder="Descreva a correção, ajuste ou novo componente..."
+              placeholder="Descreva a mudança e cole (Ctrl+V) imagens ou arquivos..."
               className="max-h-40 min-h-11 resize-none border-0 bg-transparent shadow-none focus-visible:ring-0"
             />
             <Button
@@ -476,6 +517,11 @@ function MessageRow({ message }: { message: ChatMessage }) {
                 <Badge key={a.name} variant="secondary" className="gap-1 font-normal">
                   {a.isImage ? <ImageIcon className="h-3 w-3" /> : <FileCode2 className="h-3 w-3" />}
                   {a.name}
+                  {a.usage ? (
+                    <span className="text-[10px] text-muted-foreground">
+                      {a.usage === "reference" ? "· referência" : "· adicionado"}
+                    </span>
+                  ) : null}
                 </Badge>
               ))}
             </div>

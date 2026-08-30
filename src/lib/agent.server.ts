@@ -12,7 +12,10 @@ export type Attachment = {
   isImage: boolean;
   dataBase64: string;
   text?: string | undefined;
+  /** "reference" = usar apenas como referência visual/contexto; "add" = gravar no projeto. */
+  usage?: "reference" | "add" | undefined;
 };
+
 
 export type ChatTurn = { role: "user" | "assistant"; content: string };
 
@@ -250,7 +253,8 @@ Regras obrigatórias:
 - NUNCA faça perguntas ao usuário e nunca peça confirmação. Aja imediatamente.
 - Aplique a mudança exatamente no local correto do código, preservando o restante do arquivo intacto (envie sempre o conteúdo completo final do arquivo).
 - Sempre finalize aplicando commit_and_push com uma mensagem de commit clara e descritiva.
-- Se o usuário anexar arquivos/imagens, use-os: analise o conteúdo e, quando fizer sentido, adicione-os ao projeto via commit_and_push usando "attachment:<nome>".
+- Cada anexo vem marcado com um uso: [REFERÊNCIA] = serve apenas como referência visual/contexto para você entender o pedido (NÃO grave esse arquivo no repositório); [ADICIONAR AO PROJETO] = deve ser gravado no repositório via commit_and_push usando "attachment:<nome>" num caminho adequado (ex.: imagens em src/assets/ ou public/).
+- Quando o usuário combinar texto + imagens, use as imagens de [REFERÊNCIA] para guiar a implementação (layout, cores, comportamento) e grave apenas as marcadas como [ADICIONAR AO PROJETO], referenciando-as no código quando fizer sentido.
 - Responda em português, de forma curta e objetiva, listando o que mudou e o commit gerado.`;
 }
 
@@ -265,24 +269,32 @@ async function prepareConversation(input: {
   const branch = input.repo.branch || tree.branch;
   const ref: RepoRef = { ...input.repo, branch };
 
+  const usageLabel = (a: Attachment) =>
+    a.usage === "add" ? "[ADICIONAR AO PROJETO]" : "[REFERÊNCIA]";
+
   const attachmentNotes = input.attachments.length
     ? `\n\nAnexos enviados pelo usuário:\n${input.attachments
         .map(
           (a) =>
-            `- ${a.name} (${a.mimeType})${a.text ? `\nconteúdo:\n\`\`\`\n${a.text.slice(0, 30_000)}\n\`\`\`` : ""}`,
+            `- ${usageLabel(a)} ${a.name} (${a.mimeType})${a.text ? `\nconteúdo:\n\`\`\`\n${a.text.slice(0, 30_000)}\n\`\`\`` : ""}`,
         )
         .join("\n")}`
     : "";
+
 
   const userContent: unknown[] = [
     { type: "text", text: `${input.message}${attachmentNotes}` },
     ...input.attachments
       .filter((a) => a.isImage)
-      .map((a) => ({
-        type: "image_url",
-        image_url: { url: `data:${a.mimeType};base64,${a.dataBase64}` },
-      })),
+      .flatMap((a) => [
+        { type: "text", text: `Imagem ${usageLabel(a)} — ${a.name}` },
+        {
+          type: "image_url",
+          image_url: { url: `data:${a.mimeType};base64,${a.dataBase64}` },
+        },
+      ]),
   ];
+
 
   const messages: Record<string, unknown>[] = [
     { role: "system", content: systemPrompt(repoLabel, branch) },

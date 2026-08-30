@@ -91,7 +91,7 @@ function Index() {
         id: crypto.randomUUID(),
         role: "user",
         content: text,
-        attachments: attachments.map((a) => ({ name: a.name, isImage: a.isImage })),
+        attachments: attachments.map((a) => ({ name: a.name, isImage: a.isImage, usage: a.usage })),
       },
     ]);
     setSending(true);
