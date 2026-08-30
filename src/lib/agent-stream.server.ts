@@ -15,6 +15,7 @@ const attachmentSchema = z.object({
   isImage: z.boolean(),
   dataBase64: z.string(),
   text: z.string().optional(),
+  usage: z.enum(["reference", "add"]).default("reference"),
 });
 
 const chatSchema = z.object({
