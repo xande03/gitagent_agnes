@@ -2,22 +2,29 @@
 <html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Agnes Code Agent</title>
+    <link rel="icon" href="icons/icon-32.png" />
     <link rel="stylesheet" href="frame.css" />
     <style>
       body {
-        width: 420px;
-        height: 600px;
+        width: 400px;
+        height: 560px;
       }
     </style>
   </head>
   <body>
     <div class="shell">
       <div class="bar">
-        <strong>Agnes Code Agent</strong>
-        <button id="panel">Painel lateral</button>
-        <button id="tab">Aba</button>
-        <button id="opts">Config</button>
+        <span class="brand">
+          <img src="icons/icon-32.png" alt="" />
+          <strong>Agnes Code Agent</strong>
+        </span>
+        <span class="actions">
+          <button id="panel">Painel lateral</button>
+          <button id="tab" class="optional">Aba</button>
+          <button id="opts">Config</button>
+        </span>
         <span class="host" id="host"></span>
       </div>
       <iframe

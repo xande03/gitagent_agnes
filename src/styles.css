@@ -5,6 +5,9 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* Painel lateral da extensão e telefones pequenos */
+  --breakpoint-xs: 24rem;
+
   --font-sans:
     "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Space Grotesk", "Plus Jakarta Sans", sans-serif;
