@@ -46,6 +46,37 @@ function renderFallback(frame, url, result) {
   box.querySelector("#config").addEventListener("click", () => chrome.runtime.openOptionsPage());
 }
 
+// Dentro da extensao o localStorage do iframe pode ser limpo/particionado, então
+// guardamos a conexao em chrome.storage.local e a devolvemos ao app a cada carga.
+const STORAGE_KEY = "agnesConnection";
+
+function bridge(frame, url) {
+  const origin = new URL(url).origin;
+
+  const send = async () => {
+    const { [STORAGE_KEY]: connection } = await chrome.storage.local.get(STORAGE_KEY);
+    frame.contentWindow?.postMessage(
+      { type: "agnes:restore", connection: connection ?? null, appUrl: url },
+      origin,
+    );
+  };
+
+  window.addEventListener("message", (event) => {
+    if (event.origin !== origin) return;
+    const data = event.data;
+    if (!data || typeof data !== "object") return;
+    if (data.type === "agnes:ready") void send();
+    if (data.type === "agnes:persist") {
+      void chrome.storage.local.set({ [STORAGE_KEY]: data.connection ?? null });
+    }
+    if (data.type === "agnes:clear") {
+      void chrome.storage.local.remove(STORAGE_KEY);
+    }
+  });
+
+  frame.addEventListener("load", () => void send());
+}
+
 export async function mountApp(frameId, statusId) {
   const url = await getAppUrl();
   const frame = document.getElementById(frameId);
@@ -59,6 +90,8 @@ export async function mountApp(frameId, statusId) {
     return url;
   }
 
+  bridge(frame, url);
   frame.src = url;
   return url;
 }
+
