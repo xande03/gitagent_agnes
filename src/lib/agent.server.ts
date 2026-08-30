@@ -2,6 +2,9 @@ import { commitChanges, listTree, readFile, type Change, type RepoRef } from "./
 
 const BASE_URL = "https://apihub.agnes-ai.com/v1";
 const MODEL = "agnes-2.5-flash";
+const AGNES_TIMEOUT_MS = 180_000;
+const MAX_API_ATTEMPTS = 3;
+const MAX_ROUNDS = 12;
 
 export type Attachment = {
   name: string;
@@ -15,13 +18,59 @@ export type ChatTurn = { role: "user" | "assistant"; content: string };
 
 export type AgentStep = { tool: string; detail: string; ok: boolean };
 
+type AgnesMessage = {
+  content?: string | null;
+  tool_calls?: { id: string; function: { name: string; arguments: string } }[];
+};
+
+/** Erro definitivo da API (4xx exceto 429) — não vale a pena tentar novamente. */
+class ApiFatalError extends Error {}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function agnesChat(apiKey: string, payload: Record<string, unknown>): Promise<Response> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= MAX_API_ATTEMPTS; attempt++) {
+    try {
+      const res = await fetch(`${BASE_URL}/chat/completions`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(AGNES_TIMEOUT_MS),
+      });
+      if (res.ok) return res;
+      const raw = await res.text();
+      const message = `Agnes AI falhou [${res.status}]: ${raw.slice(0, 500)}`;
+      // 429 e 5xx são transitórios (rate limit/instabilidade do provedor) → retry com backoff
+      if (res.status !== 429 && res.status < 500) throw new ApiFatalError(message);
+      lastError = new Error(message);
+    } catch (error) {
+      if (error instanceof ApiFatalError) throw error;
+      lastError = error; // timeout de rede ou instabilidade
+    }
+    if (attempt < MAX_API_ATTEMPTS) await sleep(1_200 * 2 ** (attempt - 1));
+  }
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
+}
+
+async function requestChat(apiKey: string, payload: Record<string, unknown>): Promise<AgnesMessage> {
+  const res = await agnesChat(apiKey, payload);
+  const raw = await res.text();
+  const data = JSON.parse(raw) as { choices?: { message?: AgnesMessage }[] };
+  const msg = data.choices?.[0]?.message;
+  if (!msg) throw new Error("Resposta inválida da Agnes AI.");
+  return msg;
+}
+
 const tools = [
   {
     type: "function",
     function: {
       name: "list_project_files",
       description:
-        "Lista a estrutura completa de arquivos do repositório conectado. Use SEMPRE antes de alterar algo.",
+        "Re-sincroniza a estrutura de arquivos do repositório. A estrutura inicial JÁ é fornecida no contexto do sistema — chame apenas depois de um commit ou se suspeitar que a estrutura mudou.",
       parameters: { type: "object", properties: {}, additionalProperties: false },
     },
   },
@@ -29,7 +78,8 @@ const tools = [
     type: "function",
     function: {
       name: "read_project_file",
-      description: "Lê o conteúdo de um arquivo do repositório.",
+      description:
+        "Lê o conteúdo de um arquivo do repositório. Faça todas as leituras necessárias em um único turno, com chamadas paralelas.",
       parameters: {
         type: "object",
         properties: { path: { type: "string" } },
@@ -42,7 +92,7 @@ const tools = [
     function: {
       name: "commit_and_push",
       description:
-        "Grava arquivos no repositório e faz commit + push automático. Envie o conteúdo COMPLETO final de cada arquivo.",
+        "Grava arquivos no repositório e faz commit + push automático. Envie o conteúdo COMPLETO final de cada arquivo. Um único commit por tarefa.",
       parameters: {
         type: "object",
         properties: {
@@ -74,9 +124,14 @@ const tools = [
 function systemPrompt(repoLabel: string, branch: string) {
   return `Você é um agente de engenharia de software autônomo conectado ao repositório GitHub ${repoLabel} (branch ${branch}).
 
+Eficiência — siga à risca para responder rápido:
+- A estrutura completa de arquivos JÁ está no seu contexto. NÃO chame list_project_files no início; use-a apenas para re-sincronizar após um commit.
+- Leia os arquivos necessários em LOTE: num único turno, faça de uma vez todas as chamadas read_project_file relevantes. Leia somente o estritamente necessário para a tarefa.
+- Minimize rodadas: 1º turno leia tudo que precisa; 2º turno faça o commit e responda.
+- Se o alvo for óbvio (arquivo único citado pelo usuário, nome explícito, arquivo pequeno), vá direto ao ponto sem etapas extras.
+
 Regras obrigatórias:
 - NUNCA faça perguntas ao usuário e nunca peça confirmação. Aja imediatamente.
-- Primeiro inspecione a estrutura com list_project_files e leia os arquivos relevantes com read_project_file antes de qualquer mudança.
 - Aplique a mudança exatamente no local correto do código, preservando o restante do arquivo intacto (envie sempre o conteúdo completo final do arquivo).
 - Sempre finalize aplicando commit_and_push com uma mensagem de commit clara e descritiva.
 - Se o usuário anexar arquivos/imagens, use-os: analise o conteúdo e, quando fizer sentido, adicione-os ao projeto via commit_and_push usando "attachment:<nome>".
@@ -131,25 +186,34 @@ export async function runAgent(input: {
 
   const steps: AgentStep[] = [];
   let commit: { sha: string; url: string; files: string[]; branch: string } | undefined;
+  let parallelToolCalls = true;
 
-  for (let i = 0; i < 12; i++) {
-    const res = await fetch(`${BASE_URL}/chat/completions`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: MODEL, messages, tools, tool_choice: "auto" }),
-    });
-    const raw = await res.text();
-    if (!res.ok) throw new Error(`Agnes AI falhou [${res.status}]: ${raw}`);
-    const data = JSON.parse(raw) as {
-      choices: {
-        message: {
-          content?: string | null;
-          tool_calls?: { id: string; function: { name: string; arguments: string } }[];
-        };
-      }[];
+  const callModel = async (): Promise<AgnesMessage> => {
+    const build = (withParallel: boolean): Record<string, unknown> => {
+      const payload: Record<string, unknown> = {
+        model: MODEL,
+        messages,
+        tools,
+        tool_choice: "auto",
+        temperature: 0.2,
+      };
+      if (withParallel) payload["parallel_tool_calls"] = true;
+      return payload;
     };
-    const msg = data.choices?.[0]?.message;
-    if (!msg) throw new Error("Resposta inválida da Agnes AI.");
+    try {
+      return await requestChat(apiKey, build(parallelToolCalls));
+    } catch (error) {
+      // Gateway sem suporte a parallel_tool_calls → refaz sem o parâmetro e desativa para as próximas rodadas
+      if (parallelToolCalls && error instanceof Error && error.message.includes("parallel")) {
+        parallelToolCalls = false;
+        return await requestChat(apiKey, build(false));
+      }
+      throw error;
+    }
+  };
+
+  for (let round = 0; round < MAX_ROUNDS; round++) {
+    const msg = await callModel();
     messages.push(msg as unknown as Record<string, unknown>);
 
     const calls = msg.tool_calls ?? [];
@@ -157,7 +221,10 @@ export async function runAgent(input: {
       return { reply: msg.content ?? "", steps, commit, branch, repoLabel };
     }
 
-    for (const call of calls) {
+    const outcomes: { result: unknown; ok: boolean; detail: string }[] = new Array(calls.length);
+
+    const runCall = async (index: number) => {
+      const call = calls[index]!;
       let result: unknown;
       let ok = true;
       let detail = call.function.name;
@@ -192,11 +259,27 @@ export async function runAgent(input: {
         result = { error: error instanceof Error ? error.message : String(error) };
         detail = `${call.function.name} falhou: ${(result as { error: string }).error}`;
       }
-      steps.push({ tool: call.function.name, detail, ok });
+      outcomes[index] = { result, ok, detail };
+    };
+
+    // Leituras/listagens em paralelo (aceleram); commits em série (evita conflito de ref no GitHub)
+    const writeIndexes: number[] = [];
+    const readIndexes: number[] = [];
+    calls.forEach((call, index) =>
+      (call.function.name === "commit_and_push" ? writeIndexes : readIndexes).push(index),
+    );
+    await Promise.all(readIndexes.map((index) => runCall(index)));
+    for (const index of writeIndexes) await runCall(index);
+
+    // Mensagens de tool na ordem original exigida pela API
+    for (let i = 0; i < calls.length; i++) {
+      const call = calls[i]!;
+      const outcome = outcomes[i]!;
+      steps.push({ tool: call.function.name, detail: outcome.detail, ok: outcome.ok });
       messages.push({
         role: "tool",
         tool_call_id: call.id,
-        content: JSON.stringify(result).slice(0, 100_000),
+        content: JSON.stringify(outcome.result).slice(0, 100_000),
       });
     }
   }

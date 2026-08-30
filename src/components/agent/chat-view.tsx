@@ -241,12 +241,22 @@ export function ChatView({
 }) {
   const [text, setText] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [elapsed, setElapsed] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, sending]);
+
+  useEffect(() => {
+    if (!sending) {
+      setElapsed(0);
+      return;
+    }
+    const timer = setInterval(() => setElapsed((seconds) => seconds + 1), 1_000);
+    return () => clearInterval(timer);
+  }, [sending]);
 
   async function addFiles(files: FileList | null) {
     if (!files) return;
@@ -364,7 +374,10 @@ export function ChatView({
           {sending ? (
             <div className="mt-8 flex items-center gap-3 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin text-primary" />
-              Agente trabalhando no repositório...
+              <span>
+                Agente trabalhando no repositório...
+                {elapsed > 0 ? <span className="ml-1.5 font-mono text-xs">{elapsed}s</span> : null}
+              </span>
             </div>
           ) : null}
           <div ref={bottomRef} />

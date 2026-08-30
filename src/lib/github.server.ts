@@ -1,23 +1,41 @@
 const GH = "https://api.github.com";
+const GH_TIMEOUT_MS = 30_000;
+const GH_ATTEMPTS = 3;
+const GH_RETRYABLE = new Set([429, 500, 502, 503, 504]);
+
+/** Erro definitivo do GitHub (404, 401 etc.) — não vale a pena tentar novamente. */
+class GitHubFatalError extends Error {}
 
 export type RepoRef = { owner: string; repo: string; branch?: string | undefined; token: string };
 
 async function gh<T>(ref: RepoRef, path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${GH}${path}`, {
-    ...init,
-    headers: {
-      Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${ref.token}`,
-      "Content-Type": "application/json",
-      "User-Agent": "agnes-github-agent",
-      ...(init?.headers ?? {}),
-    },
-  });
-  const text = await res.text();
-  if (!res.ok) {
-    throw new Error(`GitHub ${init?.method ?? "GET"} ${path} failed [${res.status}]: ${text}`);
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= GH_ATTEMPTS; attempt++) {
+    try {
+      const res = await fetch(`${GH}${path}`, {
+        ...init,
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${ref.token}`,
+          "Content-Type": "application/json",
+          "User-Agent": "agnes-github-agent",
+          ...(init?.headers ?? {}),
+        },
+        signal: AbortSignal.timeout(GH_TIMEOUT_MS),
+      });
+      const text = await res.text();
+      if (res.ok) return (text ? JSON.parse(text) : {}) as T;
+      const message = `GitHub ${init?.method ?? "GET"} ${path} failed [${res.status}]: ${text}`;
+      const rateLimited = res.status === 403 && /rate limit|secondary/i.test(text);
+      if (!GH_RETRYABLE.has(res.status) && !rateLimited) throw new GitHubFatalError(message);
+      lastError = new Error(message);
+    } catch (error) {
+      if (error instanceof GitHubFatalError) throw error;
+      lastError = error; // timeout ou erro retentável
+    }
+    if (attempt < GH_ATTEMPTS) await new Promise((r) => setTimeout(r, 600 * 2 ** (attempt - 1)));
   }
-  return (text ? JSON.parse(text) : {}) as T;
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
 }
 
 export async function getRepoInfo(ref: RepoRef) {
@@ -64,7 +82,14 @@ export async function readFile(ref: RepoRef, path: string) {
   );
   if (!data.content) return { path, content: "", note: "empty or binary file" };
   const bytes = atob(data.content.replace(/\n/g, ""));
-  return { path, content: bytes.length > 120_000 ? bytes.slice(0, 120_000) : bytes };
+  if (bytes.length > 120_000) {
+    return {
+      path,
+      content: bytes.slice(0, 120_000),
+      note: "AVISO: conteúdo truncado em 120.000 caracteres — o restante do arquivo NÃO foi mostrado. Não presuma que esta é a versão completa; se precisar editar além do limite, recrie o arquivo apenas com as partes necessárias preservadas.",
+    };
+  }
+  return { path, content: bytes };
 }
 
 export type Change = {
@@ -84,21 +109,21 @@ export async function commitChanges(ref: RepoRef, message: string, changes: Chan
   const headSha = refData.object.sha;
   const headCommit = await gh<{ tree: { sha: string } }>(ref, `${base}/git/commits/${headSha}`);
 
-  const tree: Record<string, unknown>[] = [];
-  for (const change of changes) {
-    if (change.delete) {
-      tree.push({ path: change.path, mode: "100644", type: "blob", sha: null });
-      continue;
-    }
-    const blob = await gh<{ sha: string }>(ref, `${base}/git/blobs`, {
-      method: "POST",
-      body: JSON.stringify({
-        content: change.content ?? "",
-        encoding: change.encoding === "base64" ? "base64" : "utf-8",
-      }),
-    });
-    tree.push({ path: change.path, mode: "100644", type: "blob", sha: blob.sha });
-  }
+  const tree: Record<string, unknown>[] = await Promise.all(
+    changes.map(async (change) => {
+      if (change.delete) {
+        return { path: change.path, mode: "100644", type: "blob", sha: null };
+      }
+      const blob = await gh<{ sha: string }>(ref, `${base}/git/blobs`, {
+        method: "POST",
+        body: JSON.stringify({
+          content: change.content ?? "",
+          encoding: change.encoding === "base64" ? "base64" : "utf-8",
+        }),
+      });
+      return { path: change.path, mode: "100644", type: "blob", sha: blob.sha };
+    }),
+  );
 
   const newTree = await gh<{ sha: string }>(ref, `${base}/git/trees`, {
     method: "POST",
