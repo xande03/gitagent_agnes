@@ -324,31 +324,45 @@ export function ChatView({
   const empty = useMemo(() => messages.length === 0, [messages.length]);
 
   return (
-    <div className="flex h-dvh flex-col bg-background">
-      <header className="sticky top-0 z-20 border-b border-border bg-surface/80 backdrop-blur-xl">
-        <div className="mx-auto flex w-full max-w-5xl items-center gap-3 px-3 py-3 sm:px-6">
-          <img
-            src={repo.avatarUrl}
-            alt={`Avatar de ${repo.fullName}`}
-            className="h-10 w-10 rounded-xl border border-border"
-          />
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <p className="truncate font-display text-sm font-semibold sm:text-base">
-                {repo.fullName}
+    <div className="flex h-dvh flex-col overflow-hidden bg-background">
+      <header className="sticky top-0 z-20 border-b border-border bg-surface/80 pt-[env(safe-area-inset-top)] backdrop-blur-xl">
+        <div className="mx-auto grid w-full max-w-5xl grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-2.5 py-2.5 sm:gap-3 sm:px-6 sm:py-3">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <img
+              src={repo.avatarUrl}
+              alt={`Avatar de ${repo.fullName}`}
+              className="hidden h-9 w-9 shrink-0 rounded-xl border border-border xs:block sm:h-10 sm:w-10"
+            />
+            <div className="min-w-0">
+              <div className="flex min-w-0 items-center gap-2">
+                <p className="truncate font-display text-[13px] font-semibold sm:text-base">
+                  {repo.fullName}
+                </p>
+                <span className="hidden h-2 w-2 shrink-0 rounded-full bg-success sm:inline-block" />
+              </div>
+              <p className="truncate text-[11px] text-muted-foreground sm:text-xs">
+                <span className="font-mono">{branch}</span>
+                {repo.private ? " · privado" : " · público"} · agnes-2.5-flash
               </p>
-              <span className="hidden h-2 w-2 shrink-0 rounded-full bg-success sm:inline-block" />
             </div>
-            <p className="truncate text-xs text-muted-foreground">
-              <span className="font-mono">{branch}</span>
-              {repo.private ? " · privado" : " · público"} · agnes-2.5-flash
-            </p>
           </div>
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" onClick={onToggleTheme} aria-label="Alternar tema">
+          <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggleTheme}
+              aria-label="Alternar tema"
+              className="h-9 w-9"
+            >
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
-            <Button variant="ghost" size="icon" asChild aria-label="Abrir no GitHub">
+            <Button
+              variant="ghost"
+              size="icon"
+              asChild
+              aria-label="Abrir no GitHub"
+              className="hidden h-9 w-9 xs:inline-flex"
+            >
               <a href={repo.url} target="_blank" rel="noreferrer">
                 <ExternalLink className="h-4 w-4" />
               </a>
@@ -358,11 +372,17 @@ export function ChatView({
               size="icon"
               onClick={onClear}
               aria-label="Limpar conversa"
-              className="hidden sm:inline-flex"
+              className="hidden h-9 w-9 sm:inline-flex"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
-            <Button variant="destructive" size="sm" onClick={onDisconnect} className="gap-2">
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={onDisconnect}
+              aria-label="Desconectar"
+              className="h-9 gap-2 px-2.5 sm:px-3"
+            >
               <LogOut className="h-4 w-4" />
               <span className="hidden sm:inline">Desconectar</span>
             </Button>
@@ -370,22 +390,24 @@ export function ChatView({
         </div>
       </header>
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="min-h-0 flex-1">
         <div className="mx-auto w-full max-w-3xl px-3 py-6 sm:px-6 sm:py-10">
           {empty ? (
             <div className="text-center">
-              <h2 className="text-2xl font-bold sm:text-3xl">O que vamos mudar no projeto?</h2>
-              <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground">
+              <h2 className="text-balance text-xl font-bold sm:text-3xl">
+                O que vamos mudar no projeto?
+              </h2>
+              <p className="mx-auto mt-3 max-w-md text-[13px] text-muted-foreground sm:text-sm">
                 O agente inspeciona a estrutura, aplica a alteração no ponto exato do código e faz
                 commit + push automaticamente.
               </p>
-              <div className="mt-8 grid gap-3 sm:grid-cols-2">
+              <div className="mt-6 grid gap-2.5 sm:mt-8 sm:grid-cols-2 sm:gap-3">
                 {SUGGESTIONS.map((s) => (
                   <button
                     key={s}
                     type="button"
                     onClick={() => setText(s)}
-                    className="rounded-2xl border border-border bg-card p-4 text-left text-sm transition-colors hover:border-primary hover:bg-accent"
+                    className="rounded-2xl border border-border bg-card p-3.5 text-left text-[13px] transition-colors hover:border-primary hover:bg-accent sm:p-4 sm:text-sm"
                   >
                     {s}
                   </button>
@@ -393,7 +415,7 @@ export function ChatView({
               </div>
             </div>
           ) : (
-            <div className="space-y-8">
+            <div className="space-y-6 sm:space-y-8">
               {messages.map((message) => (
                 <MessageRow key={message.id} message={message} />
               ))}
