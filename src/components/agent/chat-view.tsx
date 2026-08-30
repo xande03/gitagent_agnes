@@ -23,13 +23,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
+export type AttachmentUsage = "reference" | "add";
+
 export type Attachment = {
   name: string;
   mimeType: string;
   isImage: boolean;
   dataBase64: string;
   text?: string;
+  usage: AttachmentUsage;
 };
+
 
 export type AgentStep = { tool: string; detail: string; ok: boolean };
 
