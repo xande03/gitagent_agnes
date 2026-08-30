@@ -286,11 +286,15 @@ async function prepareConversation(input: {
     { type: "text", text: `${input.message}${attachmentNotes}` },
     ...input.attachments
       .filter((a) => a.isImage)
-      .map((a) => ({
-        type: "image_url",
-        image_url: { url: `data:${a.mimeType};base64,${a.dataBase64}` },
-      })),
+      .flatMap((a) => [
+        { type: "text", text: `Imagem ${usageLabel(a)} — ${a.name}` },
+        {
+          type: "image_url",
+          image_url: { url: `data:${a.mimeType};base64,${a.dataBase64}` },
+        },
+      ]),
   ];
+
 
   const messages: Record<string, unknown>[] = [
     { role: "system", content: systemPrompt(repoLabel, branch) },
