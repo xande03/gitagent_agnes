@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>Agnes Code Agent</title>
+    <link rel="stylesheet" href="frame.css" />
+    <style>
+      body {
+        width: 420px;
+        height: 600px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <div class="bar">
+        <strong>Agnes Code Agent</strong>
+        <button id="panel">Painel lateral</button>
+        <button id="tab">Aba</button>
+        <button id="opts">Config</button>
+        <span class="host" id="host"></span>
+      </div>
+      <iframe
+        id="frame"
+        allow="clipboard-read; clipboard-write"
+        sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-downloads"
+      ></iframe>
+    </div>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

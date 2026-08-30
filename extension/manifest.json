@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Agnes Code Agent",
+  "version": "1.0.0",
+  "description": "Agente de IA que analisa, edita e faz commit + push automatico em projetos do GitHub.",
+  "permissions": ["storage", "sidePanel"],
+  "host_permissions": ["https://*.lovable.app/*"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Agnes Code Agent",
+    "default_icon": { "48": "icon.png", "128": "icon.png" }
+  },
+  "side_panel": { "default_path": "sidepanel.html" },
+  "options_page": "options.html",
+  "background": { "service_worker": "background.js" },
+  "icons": { "48": "icon.png", "128": "icon.png" }
+}
