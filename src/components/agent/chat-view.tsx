@@ -43,7 +43,7 @@ export type ChatMessage = {
   content: string;
   steps?: AgentStep[];
   commit?: { sha: string; url: string; files: string[]; branch: string };
-  attachments?: { name: string; isImage: boolean }[];
+  attachments?: { name: string; isImage: boolean; usage?: AttachmentUsage }[];
   error?: boolean;
   streaming?: boolean;
 };
@@ -517,6 +517,11 @@ function MessageRow({ message }: { message: ChatMessage }) {
                 <Badge key={a.name} variant="secondary" className="gap-1 font-normal">
                   {a.isImage ? <ImageIcon className="h-3 w-3" /> : <FileCode2 className="h-3 w-3" />}
                   {a.name}
+                  {a.usage ? (
+                    <span className="text-[10px] text-muted-foreground">
+                      {a.usage === "reference" ? "· referência" : "· adicionado"}
+                    </span>
+                  ) : null}
                 </Badge>
               ))}
             </div>
