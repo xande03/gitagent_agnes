@@ -135,16 +135,12 @@
     border-color: var(--color-border);
   }
 
-  /* Tipografia fluida: acompanha painel estreito da extensao ate desktop. */
+  /* Tipografia fluida: acompanha telas pequenas ate desktop. */
   html {
     font-size: clamp(12.5px, 0.42rem + 1vw, 16px);
     -webkit-text-size-adjust: 100%;
   }
 
-  /* Modo extensao (app embutido em iframe): fonte um pouco menor e fixa. */
-  html.embedded {
-    font-size: clamp(12px, 0.4rem + 0.9vw, 14px);
-  }
 
   body {
     background-color: var(--color-background);
