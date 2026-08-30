@@ -1,25 +1,10 @@
 import { useState } from "react";
-import { Chrome, Download, GitBranch, KeyRound, Loader2, Lock, ShieldCheck } from "lucide-react";
+import { Chrome, GitBranch, KeyRound, Loader2, Lock, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-function downloadExtension() {
-  fetch("/agnes-code-agent-extension.zip")
-    .then((res) => {
-      if (!res.ok) throw new Error(`Falha no download: ${res.status}`);
-      return res.blob();
-    })
-    .then((blob) => {
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "agnes-code-agent-extension.zip";
-      a.click();
-      URL.revokeObjectURL(a.href);
-    })
-    .catch((err: unknown) => alert(err instanceof Error ? err.message : String(err)));
-}
 
 export type Credentials = {
   token: string;
