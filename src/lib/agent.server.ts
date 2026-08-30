@@ -12,7 +12,10 @@ export type Attachment = {
   isImage: boolean;
   dataBase64: string;
   text?: string | undefined;
+  /** "reference" = usar apenas como referência visual/contexto; "add" = gravar no projeto. */
+  usage?: "reference" | "add" | undefined;
 };
+
 
 export type ChatTurn = { role: "user" | "assistant"; content: string };
 
