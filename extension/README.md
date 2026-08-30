@@ -1,24 +1,31 @@
-# Agnes Code Agent — extensao de navegador
+# Agnes Code Agent — extensão de navegador
 
-Funciona em Chrome, Edge, Brave, Arc e Opera (Chromium).
+Extensão Manifest V3 que roda o agente **ancorado no painel lateral** do navegador,
+dividindo a tela com a página que você está vendo.
 
-## Instalar
+## Instalar (Chrome, Edge, Brave, Opera, Arc)
 
 1. Descompacte o arquivo `agnes-code-agent-extension.zip`.
 2. Abra `chrome://extensions`.
 3. Ative o **Modo do desenvolvedor** (canto superior direito).
-4. Clique em **Carregar sem compactacao** e selecione a pasta descompactada.
+4. Clique em **Carregar sem compactação** e escolha a pasta descompactada.
+5. Fixe o ícone na barra. Um clique abre/fecha o painel lateral ancorado.
 
-## Usar
+Na primeira instalação a extensão tenta abrir o painel automaticamente; se o
+navegador exigir um gesto, basta clicar no ícone.
 
-- Clique no icone da extensao para abrir o chat no popup.
-- Botao "Painel lateral" abre o agente fixo ao lado da pagina.
-- Botao "Aba" abre o app em tela cheia.
-- Em **Config** (pagina de opcoes) defina a URL do app publicado, caso use um dominio proprio.
+## Configuração
 
-## Seguranca
+O painel embute a interface do app publicado por HTTPS. Para apontar para outro
+domínio, abra **Config** (ou a página de opções) e informe a URL `https://...`.
 
-- A chave da API Agnes e a URL base `https://apihub.agnes-ai.com/v1` ficam **somente no servidor**
-  do app (server functions). A extensao nao contem nem transmite segredos.
-- O token do GitHub e digitado pelo usuario e permanece no armazenamento local do app.
-- A extensao apenas embute a interface hospedada via HTTPS (`host_permissions` restrito).
+## Segurança
+
+- A chave da API Agnes e a URL base do provedor (`https://apihub.agnes-ai.com/v1`)
+  ficam **somente no servidor do app** (server functions) — nunca na extensão.
+- O token do GitHub permanece no armazenamento local do próprio app.
+- `host_permissions` limitado a `https://*.lovable.app/*`; só URLs HTTPS são aceitas.
+
+## Ícones
+
+`icons/icon-16.png`, `icon-32.png`, `icon-48.png`, `icon-128.png`, `icon-512.png`.
