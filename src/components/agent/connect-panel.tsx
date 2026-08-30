@@ -139,6 +139,24 @@ export function ConnectPanel({
             )}
           </Button>
         </form>
+
+        <div className="panel mt-6 rounded-3xl p-5 sm:p-6">
+          <p className="flex items-center gap-2 text-sm font-semibold">
+            <Chrome className="h-4 w-4 text-primary" /> Use como app ou extensão
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Instale como PWA pelo próprio navegador, ou baixe a extensão para usar o agente no
+            painel lateral do Chrome, Edge, Brave e Opera.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-4 w-full"
+            onClick={downloadExtension}
+          >
+            <Download className="h-4 w-4" /> Baixar extensão (.zip)
+          </Button>
+        </div>
       </div>
     </div>
   );
