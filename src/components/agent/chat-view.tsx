@@ -484,9 +484,6 @@ export function ChatView({
               placeholder="Descreva a mudança e cole (Ctrl+V) imagens ou arquivos..."
               className="max-h-40 min-h-11 resize-none border-0 bg-transparent shadow-none focus-visible:ring-0"
             />
-
-              className="max-h-40 min-h-11 resize-none border-0 bg-transparent shadow-none focus-visible:ring-0"
-            />
             <Button
               size="icon"
               onClick={submit}
