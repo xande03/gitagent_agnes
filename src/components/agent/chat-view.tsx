@@ -185,7 +185,7 @@ function MarkdownContent({ content }: { content: string }) {
               ? "text-lg sm:text-xl"
               : block.level === 2
                 ? "text-base sm:text-lg"
-                : "text-[15px] sm:text-base";
+                : "text-sm sm:text-base";
           return (
             <p
               key={index}
@@ -200,7 +200,7 @@ function MarkdownContent({ content }: { content: string }) {
           return (
             <ListTag
               key={index}
-              className={`ml-5 space-y-1.5 text-[15px] leading-7 sm:text-base ${block.ordered ? "list-decimal" : "list-disc"} marker:text-primary`}
+              className={`ml-5 space-y-1.5 text-sm leading-relaxed sm:text-base ${block.ordered ? "list-decimal" : "list-disc"} marker:text-primary`}
             >
               {block.items.map((item, itemIndex) => (
                 <li key={itemIndex} className="pl-1">
@@ -213,7 +213,7 @@ function MarkdownContent({ content }: { content: string }) {
         return (
           <p
             key={index}
-            className="whitespace-pre-wrap text-[15px] leading-7 text-foreground/95 sm:text-base"
+            className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/95 sm:text-base"
           >
             {renderInline(block.text)}
           </p>
@@ -335,7 +335,7 @@ export function ChatView({
             />
             <div className="min-w-0">
               <div className="flex min-w-0 items-center gap-2">
-                <p className="truncate font-display text-[13px] font-semibold sm:text-base">
+                <p className="truncate font-display text-sm font-semibold sm:text-base">
                   {repo.fullName}
                 </p>
                 <span className="hidden h-2 w-2 shrink-0 rounded-full bg-success sm:inline-block" />
@@ -589,7 +589,7 @@ function MessageRow({ message }: { message: ChatMessage }) {
         </div>
         <div className="px-4 py-4 sm:px-5 sm:py-5">
           {message.error ? (
-            <p className="whitespace-pre-wrap text-[15px] leading-7 text-destructive sm:text-base">
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-destructive sm:text-base">
               {message.content}
             </p>
           ) : (

@@ -61,7 +61,13 @@ function Index() {
   }
 
   useEffect(() => {
+    // Fonte/espacamentos mais compactos quando o app roda dentro da extensao.
+    document.documentElement.classList.toggle("embedded", embedded);
+  }, [embedded]);
+
+  useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_KEY);
+
     if (stored) {
       try {
         const parsed = JSON.parse(stored) as { creds: Credentials; repo: RepoInfo };
