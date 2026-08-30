@@ -81,17 +81,28 @@ function bridge(frame, url) {
 }
 
 export async function mountApp(frameId, statusId) {
-  const url = await getAppUrl();
+  let url = await getAppUrl();
   const frame = document.getElementById(frameId);
   const status = statusId ? document.getElementById(statusId) : null;
   if (status) status.textContent = new URL(url).host;
 
-  const result = await probe(url);
+  let result = await probe(url);
+  // Se a URL salva/padrao nao responder, tenta as alternativas conhecidas.
+  for (const candidate of FALLBACK_URLS) {
+    if (result.ok || candidate === url) break;
+    const next = await probe(candidate);
+    if (next.ok) {
+      url = candidate;
+      result = next;
+      if (status) status.textContent = new URL(url).host;
+    }
+  }
   if (!result.ok) {
     renderFallback(frame, url, result);
     if (status) status.textContent = `${new URL(url).host} · offline`;
     return url;
   }
+
 
   bridge(frame, url);
   frame.src = url;
