@@ -1,6 +1,7 @@
 import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
+import { handleAgentStreamRequest } from "./lib/agent-stream.server";
 import { renderErrorPage } from "./lib/error-page";
 
 type ServerEntry = {
@@ -47,6 +48,12 @@ function isH3SwallowedErrorBody(body: string): boolean {
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      // Endpoint SSE de streaming do agente (tratado fora do router para
+      // permitir resposta em fluxo contínuo).
+      const url = new URL(request.url);
+      if (url.pathname === "/api/agent-stream" && request.method === "POST") {
+        return await handleAgentStreamRequest(request);
+      }
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);

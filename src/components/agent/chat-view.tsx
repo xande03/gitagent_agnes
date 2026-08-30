@@ -41,6 +41,7 @@ export type ChatMessage = {
   commit?: { sha: string; url: string; files: string[]; branch: string };
   attachments?: { name: string; isImage: boolean }[];
   error?: boolean;
+  streaming?: boolean;
 };
 
 export type RepoInfo = {
@@ -226,6 +227,7 @@ export function ChatView({
   onDisconnect,
   onClear,
   sending,
+  streaming = false,
   theme,
   onToggleTheme,
 }: {
@@ -236,6 +238,7 @@ export function ChatView({
   onDisconnect: () => void;
   onClear: () => void;
   sending: boolean;
+  streaming?: boolean;
   theme: "light" | "dark";
   onToggleTheme: () => void;
 }) {
@@ -371,7 +374,7 @@ export function ChatView({
               ))}
             </div>
           )}
-          {sending ? (
+          {sending && !streaming ? (
             <div className="mt-8 flex items-center gap-3 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin text-primary" />
               <span>
@@ -506,8 +509,15 @@ function MessageRow({ message }: { message: ChatMessage }) {
         <div className="flex items-center gap-2 border-b border-border bg-muted/40 px-4 py-2.5">
           <Sparkles className="h-3.5 w-3.5 text-primary" />
           <span className="font-display text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            {message.error ? "Falha na solicitação" : "Resposta do agente"}
+            {message.error
+              ? "Falha na solicitação"
+              : message.streaming
+                ? "Gerando resposta..."
+                : "Resposta do agente"}
           </span>
+          {message.streaming ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+          ) : null}
         </div>
         <div className="px-4 py-4 sm:px-5 sm:py-5">
           {message.error ? (
@@ -517,6 +527,12 @@ function MessageRow({ message }: { message: ChatMessage }) {
           ) : (
             <MarkdownContent content={message.content} />
           )}
+          {message.streaming ? (
+            <span
+              aria-hidden
+              className="mt-1 inline-block h-4 w-2 animate-pulse rounded-[2px] bg-primary align-middle"
+            />
+          ) : null}
         </div>
       </div>
 

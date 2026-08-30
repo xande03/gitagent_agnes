@@ -11,7 +11,7 @@ import {
   type RepoInfo,
 } from "@/components/agent/chat-view";
 import { useTheme } from "@/hooks/use-theme";
-import { connectRepo, sendAgentMessage } from "@/lib/agent.functions";
+import { connectRepo } from "@/lib/agent.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -42,9 +42,9 @@ function Index() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [connecting, setConnecting] = useState(false);
   const [sending, setSending] = useState(false);
+  const [streamActive, setStreamActive] = useState(false);
 
   const connect = useServerFn(connectRepo);
-  const send = useServerFn(sendAgentMessage);
 
   useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_KEY);
@@ -95,30 +95,145 @@ function Index() {
       },
     ]);
     setSending(true);
-    try {
-      const result = await send({
-        data: { repo: creds, message: text, history, attachments },
-      });
+    setStreamActive(false);
+
+    const assistantId = crypto.randomUUID();
+    let created = false;
+    let commitInfo: ChatMessage["commit"] | undefined;
+
+    // Cria a mensagem do assistente assim que o primeiro evento chega
+    const ensureMessage = () => {
+      if (created) return;
+      created = true;
+      setStreamActive(true);
       setMessages((prev) => [
         ...prev,
-        {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content: result.reply || "Alterações aplicadas.",
-          steps: result.steps,
-          ...(result.commit ? { commit: result.commit } : {}),
-        },
+        { id: assistantId, role: "assistant", content: "", steps: [], streaming: true },
       ]);
-      if (result.commit) toast.success(`Commit enviado: ${result.commit.sha.slice(0, 7)}`);
+    };
+    const patch = (fn: (m: ChatMessage) => ChatMessage) =>
+      setMessages((prev) => prev.map((m) => (m.id === assistantId ? fn(m) : m)));
+
+    try {
+      const res = await fetch("/api/agent-stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ repo: creds, message: text, history, attachments }),
+      });
+      if (!res.ok || !res.body) {
+        const detail = await res.text().catch(() => "");
+        let message = `Falha na conexão com o agente [${res.status}].`;
+        try {
+          message = (JSON.parse(detail) as { error?: string }).error ?? message;
+        } catch {
+          // corpo não-JSON — mantém a mensagem padrão
+        }
+        throw new Error(message);
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let finished = false;
+
+      while (!finished) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith("data:")) continue;
+          const json = trimmed.slice(5).trim();
+          if (!json || json === "[DONE]") continue;
+          let evt: {
+            type: string;
+            text?: string;
+            tool?: string;
+            detail?: string;
+            ok?: boolean;
+            sha?: string;
+            url?: string;
+            files?: string[];
+            branch?: string;
+            reply?: string;
+            message?: string;
+          };
+          try {
+            evt = JSON.parse(json);
+          } catch {
+            continue;
+          }
+
+          if (evt.type === "delta" && evt.text) {
+            ensureMessage();
+            patch((m) => ({ ...m, content: m.content + evt.text }));
+          } else if (evt.type === "step" && evt.tool) {
+            ensureMessage();
+            patch((m) => ({
+              ...m,
+              steps: [
+                ...(m.steps ?? []),
+                { tool: evt.tool!, detail: evt.detail ?? "", ok: evt.ok ?? true },
+              ],
+            }));
+          } else if (evt.type === "commit" && evt.sha && evt.url) {
+            ensureMessage();
+            const nextCommit: NonNullable<ChatMessage["commit"]> = {
+              sha: evt.sha,
+              url: evt.url,
+              files: evt.files ?? [],
+              branch: evt.branch ?? "",
+            };
+            commitInfo = nextCommit;
+            patch((m) => ({ ...m, commit: nextCommit }));
+          } else if (evt.type === "done") {
+            finished = true;
+            ensureMessage();
+            patch((m) => ({
+              ...m,
+              streaming: false,
+              content: m.content || evt.reply || "Alterações aplicadas.",
+            }));
+          } else if (evt.type === "error") {
+            finished = true;
+            ensureMessage();
+            const detail = evt.message ?? "Erro inesperado.";
+            patch((m) => ({
+              ...m,
+              streaming: false,
+              error: true,
+              content: m.content ? `${m.content}\n\n${detail}` : detail,
+            }));
+            toast.error("O agente encontrou um erro.");
+          }
+        }
+      }
+
+      if (!created) throw new Error("O agente não retornou resposta.");
+      patch((m) => ({ ...m, streaming: false }));
+      if (commitInfo) toast.success(`Commit enviado: ${commitInfo.sha.slice(0, 7)}`);
     } catch (error) {
       const detail = error instanceof Error ? error.message : "Erro inesperado.";
-      setMessages((prev) => [
-        ...prev,
-        { id: crypto.randomUUID(), role: "assistant", content: detail, error: true },
-      ]);
+      if (created) {
+        patch((m) => ({
+          ...m,
+          streaming: false,
+          error: true,
+          content: m.content ? `${m.content}\n\n${detail}` : detail,
+        }));
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          { id: assistantId, role: "assistant", content: detail, error: true },
+        ]);
+      }
       toast.error("O agente encontrou um erro.");
     } finally {
       setSending(false);
+      setStreamActive(false);
     }
   }
 
@@ -135,6 +250,7 @@ function Index() {
       onDisconnect={handleDisconnect}
       onClear={() => setMessages([])}
       sending={sending}
+      streaming={streamActive}
       theme={theme}
       onToggleTheme={toggle}
     />
