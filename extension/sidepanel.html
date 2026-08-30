@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>Agnes Code Agent</title>
+    <link rel="stylesheet" href="frame.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <div class="bar">
+        <strong>Agnes Code Agent</strong>
+        <button id="tab">Abrir em aba</button>
+        <button id="opts">Config</button>
+        <span class="host" id="host"></span>
+      </div>
+      <iframe
+        id="frame"
+        allow="clipboard-read; clipboard-write"
+        sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-downloads"
+      ></iframe>
+    </div>
+    <script type="module" src="sidepanel.js"></script>
+  </body>
+</html>

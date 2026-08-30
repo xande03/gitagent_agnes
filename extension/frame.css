@@ -1,0 +1,51 @@
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #0d1117;
+  color: #e6edf3;
+  font-family:
+    "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid #21262d;
+  font-size: 12px;
+}
+.bar strong {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.bar .host {
+  color: #7ee7d4;
+  font-family: ui-monospace, "JetBrains Mono", monospace;
+  margin-left: auto;
+}
+.bar button {
+  background: #161b22;
+  color: #e6edf3;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.bar button:hover {
+  border-color: #2dd4bf;
+}
+iframe {
+  flex: 1;
+  width: 100%;
+  border: 0;
+}
