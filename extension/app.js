@@ -10,11 +10,55 @@ export async function getAppUrl() {
   return /^https:\/\//i.test(url) ? url : DEFAULT_APP_URL;
 }
 
+// Verifica se a URL responde antes de embutir: se o app nao estiver publicado
+// (403/404) o iframe fica em branco sem nenhuma pista para o usuario.
+async function probe(url) {
+  try {
+    const response = await fetch(url, { method: "GET", credentials: "omit", cache: "no-store" });
+    return { ok: response.ok, status: response.status };
+  } catch (error) {
+    return { ok: false, status: 0, message: String(error?.message || error) };
+  }
+}
+
+function renderFallback(frame, url, result) {
+  const box = document.createElement("div");
+  box.className = "fallback";
+  const reason =
+    result.status === 403 || result.status === 401
+      ? "O app ainda nao esta publicado (ou exige login). Publique o projeto no Lovable e a extensao carregara a mesma interface do PWA."
+      : result.status === 404
+        ? "URL nao encontrada. Ajuste o endereco do app em Config."
+        : `Nao foi possivel conectar (${result.status || "rede"}). Verifique sua internet ou o endereco em Config.`;
+  box.innerHTML = `
+    <h1>Interface indisponivel</h1>
+    <p>${reason}</p>
+    <code>${url}</code>
+    <div class="fallback-actions">
+      <button id="retry">Tentar de novo</button>
+      <button id="open">Abrir em aba</button>
+      <button id="config">Config</button>
+    </div>
+  `;
+  frame.replaceWith(box);
+  box.querySelector("#retry").addEventListener("click", () => location.reload());
+  box.querySelector("#open").addEventListener("click", () => chrome.tabs.create({ url }));
+  box.querySelector("#config").addEventListener("click", () => chrome.runtime.openOptionsPage());
+}
+
 export async function mountApp(frameId, statusId) {
   const url = await getAppUrl();
   const frame = document.getElementById(frameId);
   const status = statusId ? document.getElementById(statusId) : null;
-  frame.src = url;
   if (status) status.textContent = new URL(url).host;
+
+  const result = await probe(url);
+  if (!result.ok) {
+    renderFallback(frame, url, result);
+    if (status) status.textContent = `${new URL(url).host} · offline`;
+    return url;
+  }
+
+  frame.src = url;
   return url;
 }

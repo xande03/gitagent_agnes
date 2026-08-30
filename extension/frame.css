@@ -105,3 +105,49 @@ iframe {
     display: none;
   }
 }
+
+/* Fallback quando o app hospedado nao responde (nao publicado, offline). */
+.fallback {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  padding: 18px;
+  text-align: left;
+}
+.fallback h1 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+.fallback p {
+  margin: 0;
+  color: #9fb0c0;
+  font-size: 12px;
+  line-height: 1.55;
+}
+.fallback code {
+  overflow-wrap: anywhere;
+  color: #7ee7d4;
+  font-family: ui-monospace, "JetBrains Mono", monospace;
+  font-size: 10px;
+}
+.fallback-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.fallback-actions button {
+  background: #161b22;
+  color: #e6edf3;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.fallback-actions button:hover {
+  border-color: #2dd4bf;
+  color: #7ee7d4;
+}
