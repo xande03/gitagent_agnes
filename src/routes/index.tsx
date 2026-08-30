@@ -46,52 +46,24 @@ function Index() {
 
   const connect = useServerFn(connectRepo);
 
-  // Persistencia: localStorage no PWA + ponte com a extensao (chrome.storage).
-  const embedded = typeof window !== "undefined" && window.parent !== window;
-
+  // Persistencia local da conexao (PWA).
   function persist(connection: { creds: Credentials; repo: RepoInfo } | null) {
     if (connection) window.localStorage.setItem(STORAGE_KEY, JSON.stringify(connection));
     else window.localStorage.removeItem(STORAGE_KEY);
-    if (window.parent !== window) {
-      window.parent.postMessage(
-        connection ? { type: "agnes:persist", connection } : { type: "agnes:clear" },
-        "*",
-      );
-    }
   }
 
   useEffect(() => {
-    // Fonte/espacamentos mais compactos quando o app roda dentro da extensao.
-    document.documentElement.classList.toggle("embedded", embedded);
-  }, [embedded]);
-
-  useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_KEY);
-
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored) as { creds: Credentials; repo: RepoInfo };
-        setCreds(parsed.creds);
-        setRepo(parsed.repo);
-      } catch {
-        window.localStorage.removeItem(STORAGE_KEY);
-      }
+    if (!stored) return;
+    try {
+      const parsed = JSON.parse(stored) as { creds: Credentials; repo: RepoInfo };
+      setCreds(parsed.creds);
+      setRepo(parsed.repo);
+    } catch {
+      window.localStorage.removeItem(STORAGE_KEY);
     }
+  }, []);
 
-    if (!embedded) return;
-    const onMessage = (event: MessageEvent) => {
-      const data = event.data as
-        | { type?: string; connection?: { creds: Credentials; repo: RepoInfo } | null }
-        | null;
-      if (!data || data.type !== "agnes:restore" || !data.connection) return;
-      setCreds(data.connection.creds);
-      setRepo(data.connection.repo);
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data.connection));
-    };
-    window.addEventListener("message", onMessage);
-    window.parent.postMessage({ type: "agnes:ready" }, "*");
-    return () => window.removeEventListener("message", onMessage);
-  }, [embedded]);
 
   async function handleConnect(next: Credentials) {
     setConnecting(true);
