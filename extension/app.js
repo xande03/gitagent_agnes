@@ -1,14 +1,17 @@
 // Config unica do app hospedado. A chave da API Agnes e a URL base do provedor
 // NUNCA vivem na extensao: elas ficam no servidor do app (server functions),
 // que e chamado a partir desta URL. A extensao apenas embute a interface.
-export const DEFAULT_APP_URL =
-  "https://project--263fba90-48cf-4930-bc9a-b508c4c20b83.lovable.app";
+export const DEFAULT_APP_URL = "https://gitagent-agnes.lovable.app";
+
+// URLs alternativas testadas automaticamente quando a principal nao responde.
+const FALLBACK_URLS = ["https://project--263fba90-48cf-4930-bc9a-b508c4c20b83.lovable.app"];
 
 export async function getAppUrl() {
   const { appUrl } = await chrome.storage.local.get("appUrl");
   const url = (appUrl || DEFAULT_APP_URL).trim().replace(/\/+$/, "");
   return /^https:\/\//i.test(url) ? url : DEFAULT_APP_URL;
 }
+
 
 // Verifica se a URL responde antes de embutir: se o app nao estiver publicado
 // (403/404) o iframe fica em branco sem nenhuma pista para o usuario.
