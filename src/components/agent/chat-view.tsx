@@ -429,6 +429,18 @@ export function ChatView({
                   <span className="max-w-[160px] truncate">{a.name}</span>
                   <button
                     type="button"
+                    onClick={() => toggleUsage(index)}
+                    title="Alternar entre usar como referência ou adicionar ao projeto"
+                    className={`rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors ${
+                      a.usage === "reference"
+                        ? "border-primary/40 bg-primary/10 text-primary"
+                        : "border-success/40 bg-success/10 text-success"
+                    }`}
+                  >
+                    {a.usage === "reference" ? "referência" : "adicionar ao projeto"}
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== index))}
                     aria-label={`Remover ${a.name}`}
                   >
@@ -439,7 +451,10 @@ export function ChatView({
             </div>
           ) : null}
 
-          <div className="flex items-end gap-2 rounded-3xl border border-border bg-card p-2 shadow-[var(--shadow-panel)] focus-within:border-primary">
+          <div
+            className="flex items-end gap-2 rounded-3xl border border-border bg-card p-2 shadow-[var(--shadow-panel)] focus-within:border-primary"
+            onPaste={handlePaste}
+          >
             <input
               ref={fileRef}
               type="file"
@@ -458,6 +473,7 @@ export function ChatView({
             <Textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
+              onPaste={handlePaste}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
@@ -465,7 +481,10 @@ export function ChatView({
                 }
               }}
               rows={1}
-              placeholder="Descreva a correção, ajuste ou novo componente..."
+              placeholder="Descreva a mudança e cole (Ctrl+V) imagens ou arquivos..."
+              className="max-h-40 min-h-11 resize-none border-0 bg-transparent shadow-none focus-visible:ring-0"
+            />
+
               className="max-h-40 min-h-11 resize-none border-0 bg-transparent shadow-none focus-visible:ring-0"
             />
             <Button
