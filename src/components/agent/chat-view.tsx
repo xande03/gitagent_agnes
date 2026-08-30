@@ -265,7 +265,7 @@ export function ChatView({
     return () => clearInterval(timer);
   }, [sending]);
 
-  async function addFiles(files: FileList | null) {
+  async function addFiles(files: ArrayLike<File> | null) {
     if (!files) return;
     const next: Attachment[] = [];
     for (const file of Array.from(files).slice(0, 6)) {
@@ -282,16 +282,37 @@ export function ChatView({
             file.name,
           ));
       next.push({
-        name: file.name,
+        name: file.name || `colado-${Date.now()}.${(file.type.split("/")[1] ?? "bin")}`,
         mimeType: file.type || "application/octet-stream",
         isImage,
         dataBase64,
+        usage: isImage ? "reference" : "add",
         ...(isText ? { text: new TextDecoder().decode(bytes) } : {}),
       });
     }
     setAttachments((prev) => [...prev, ...next].slice(0, 6));
     if (fileRef.current) fileRef.current.value = "";
   }
+
+  function handlePaste(event: React.ClipboardEvent) {
+    const items = Array.from(event.clipboardData?.items ?? []);
+    const files = items
+      .filter((item) => item.kind === "file")
+      .map((item) => item.getAsFile())
+      .filter((file): file is File => Boolean(file));
+    if (!files.length) return;
+    event.preventDefault();
+    void addFiles(files);
+  }
+
+  function toggleUsage(index: number) {
+    setAttachments((prev) =>
+      prev.map((a, i) =>
+        i === index ? { ...a, usage: a.usage === "reference" ? "add" : "reference" } : a,
+      ),
+    );
+  }
+
 
   function submit() {
     if (!text.trim() || sending) return;
