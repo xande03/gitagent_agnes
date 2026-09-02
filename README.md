@@ -30,3 +30,9 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+## Extensão de navegador
+
+O projeto também existe como **extensão MV3 independente** (Chrome, Edge, Brave, Opera, Firefox)
+com as mesmas funções do app web — streaming, anexos, temas, commit + push automático —
+sem depender do servidor. Veja [`extension/README.md`](extension/README.md) para instalar.

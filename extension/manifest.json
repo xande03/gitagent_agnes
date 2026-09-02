@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Agnes Code Agent — GitHub por chat",
+  "version": "1.0.0",
+  "description": "Agente de IA que analisa, edita e faz commit + push automático no seu projeto do GitHub, com resposta em streaming em tempo real.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "Agnes Code Agent",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png"
+    }
+  },
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://api.github.com/*",
+    "https://apihub.agnes-ai.com/*"
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "agnes-agent@xande03.dev",
+      "strict_min_version": "115.0"
+    }
+  }
+}

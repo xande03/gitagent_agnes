@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agnes Code Agent</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body class="mode-popup">
+    <!-- Tela de conexão -->
+    <div id="connect-screen" class="screen hidden">
+      <div class="connect-wrap">
+        <div class="connect-head">
+          <div class="connect-logo" data-icon="git-branch"></div>
+          <h1>Agnes Code Agent</h1>
+          <p>
+            Conecte suas credenciais para liberar o chat com o agente que analisa, edita e faz
+            commit + push automático no seu projeto do GitHub.
+          </p>
+        </div>
+        <form id="connect-form" class="panel connect-form">
+          <div class="field">
+            <label for="f-token"><span data-icon="key-round" class="icon-sm"></span> Token de acesso do GitHub</label>
+            <input id="f-token" type="password" autocomplete="off" placeholder="ghp_..." class="input mono" />
+            <p class="hint">Fine-grained token ou classic com permissão de leitura e escrita de conteúdo.</p>
+          </div>
+          <div class="field">
+            <label for="f-agnes"><span data-icon="sparkles" class="icon-sm"></span> Chave da API Agnes</label>
+            <input id="f-agnes" type="password" autocomplete="off" placeholder="sk-..." class="input mono" />
+            <p class="hint">
+              Na extensão o modelo <span class="mono">agnes-2.5-flash</span> roda direto do seu
+              navegador. A chave fica somente neste dispositivo.
+            </p>
+          </div>
+          <div class="field-row">
+            <div class="field grow">
+              <label for="f-repo">Repositório</label>
+              <input id="f-repo" type="text" placeholder="dono/projeto ou URL" class="input mono" />
+            </div>
+            <div class="field w-branch">
+              <label for="f-branch">Branch (opcional)</label>
+              <input id="f-branch" type="text" placeholder="main" class="input mono" />
+            </div>
+          </div>
+          <p id="connect-error" class="connect-error hidden"></p>
+          <button type="submit" id="connect-btn" class="btn btn-primary btn-lg btn-block">
+            <span data-icon="lock" class="icon-sm"></span> Conectar projeto
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Tela do chat -->
+    <div id="chat-screen" class="screen hidden">
+      <header class="topbar">
+        <img id="repo-avatar" class="repo-avatar" alt="" />
+        <div class="repo-meta">
+          <div class="repo-title-row">
+            <p id="repo-name" class="repo-name"></p>
+            <span class="status-dot"></span>
+          </div>
+          <p id="repo-sub" class="repo-sub"></p>
+        </div>
+        <div class="topbar-actions">
+          <button id="btn-open-tab" class="btn-icon" title="Abrir em aba (modo tela cheia)" aria-label="Abrir em aba"></button>
+          <button id="btn-theme" class="btn-icon" title="Alternar tema" aria-label="Alternar tema"></button>
+          <a id="btn-github" class="btn-icon" target="_blank" rel="noreferrer" title="Abrir no GitHub" aria-label="Abrir no GitHub"></a>
+          <button id="btn-clear" class="btn-icon" title="Limpar conversa" aria-label="Limpar conversa"></button>
+          <button id="btn-disconnect" class="btn btn-destructive btn-sm disconnect-btn">
+            <span data-icon="log-out" class="icon-sm"></span>
+            <span class="disconnect-label">Desconectar</span>
+          </button>
+        </div>
+      </header>
+
+      <main id="thread-scroll" class="thread-scroll">
+        <div id="thread" class="thread"></div>
+      </main>
+
+      <footer class="composer-wrap">
+        <div id="attachment-chips" class="attachment-chips hidden"></div>
+        <div class="composer">
+          <input id="file-input" type="file" multiple class="hidden" />
+          <button id="btn-attach" class="btn-icon" title="Anexar arquivos e imagens" aria-label="Anexar arquivos e imagens"></button>
+          <textarea
+            id="composer-input"
+            rows="1"
+            placeholder="Descreva a correção, ajuste ou novo componente..."
+          ></textarea>
+          <button id="btn-send" class="btn-send" title="Enviar" aria-label="Enviar" disabled></button>
+        </div>
+        <p class="composer-note">O agente executa e publica as mudanças sem pedir confirmação.</p>
+      </footer>
+    </div>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>
